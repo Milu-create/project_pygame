@@ -1,0 +1,1 @@
+print("Hello! It's pygame project.")
