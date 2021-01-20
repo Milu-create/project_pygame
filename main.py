@@ -1,14 +1,15 @@
 from abc import abstractmethod
+from random import randrange
 import pygame
 import sqlite3
 
 HEIGHT, WIDTH = 800, 1200
 CON = sqlite3.connect("players.db")
 CUR = CON.cursor()
+FPS = 60
 
 
 class App:
-
     def __init__(self):
         self._state = None
         pygame.init()
@@ -30,15 +31,13 @@ class App:
                 if event.type == pygame.QUIT:
                     self._running = False
                 self._state.process_event(event)
-
-            dt = self._clock.tick()
+            dt = self._clock.tick(FPS)
             self._state.loop(dt)
             pygame.display.flip()
         self._state.destroy()
 
 
 class AppState:
-
     def __init__(self):
         self._app = None
 
@@ -70,6 +69,8 @@ class MenuState(AppState):
         super().__init__()
         self._but_new_game = Button()
         self._record_but = Button()
+        self._find = Button()
+        self._open = Button()
         self._name = InputBox(500, 150, 200, 50, (66, 170, 255), (35, 52, 110))
         self._bg_img = imgs[background_image]
 
@@ -84,15 +85,21 @@ class MenuState(AppState):
                 self._total = self._name.ret_total()
                 CUR.execute("""INSERT INTO players(name, score) VALUES(?, ?);""", self._total)
                 CON.commit()
-                self.get_app().set_state(GameState())
+                self.get_app().set_state(GameState(randrange(0, 2)))
             elif self._record_but.pressed(pygame.mouse.get_pos()):
                 self.get_app().set_state(RecState('recbackground'))
+            elif self._open.pressed(pygame.mouse.get_pos()):
+                self.get_app().set_state(GameState(0))
+            elif self._find.pressed(pygame.mouse.get_pos()):
+                self.get_app().set_state(GameState(1))
 
     def loop(self, dt):
         screen = self.get_app().get_screen()
         screen.fill((0, 0, 0))
         screen.blit(self._bg_img, (0, 0))
         self._name.draw(screen)
+        self._open.do(screen, (66, 170, 255), 100, 475, 400, 75, 0, "OPEN MODE", (35, 52, 110))
+        self._find.do(screen, (66, 170, 255), 700, 475, 400, 75, 0, "HIDE AND SEEK MODE", (35, 52, 110))
         self._but_new_game.do(screen, (66, 170, 255), 500, 350, 200, 50, 0, "PLAY", (35, 52, 110))
         self._record_but.do(screen, (66, 170, 255), 500, 650, 200, 50, 0, "RECORDS", (35, 52, 110))
 
@@ -153,19 +160,79 @@ class RecState(AppState):
 
 
 class GameState(AppState):
-
-    def __init__(self):
+    def __init__(self, is_find):
         super().__init__()
+        self._is_mode = is_find
+        self._board_speed = 60
+        self._board = pygame.Rect(450, 650, 300, 20)
+        self._ball_radius = 20
+        self._ball_speed = 3
+        self._ball_rect = int(self._ball_radius * 2 ** 0.5)
+        self._ball = pygame.Rect(randrange(self._ball_rect, WIDTH - self._ball_rect),
+                                 400, self._ball_rect, self._ball_rect)
+        self._dx, self._dy = 1, -1
+        self._block_list = [pygame.Rect(10 + 120 * i, 10 + 70 * j, 100, 50) for i in range(10) for j in range(4)]
+        self._is_draw_list = [randrange(0, 2) for _ in self._block_list]
+
+    def detect_collision(self, dx, dy, ball, rect):
+        if dx > 0:
+            delta_x = ball.right - rect.left
+        else:
+            delta_x = rect.right - ball.left
+        if dy > 0:
+            delta_y = ball.bottom - rect.top
+        else:
+            delta_y = rect.bottom - ball.top
+        if abs(delta_x - delta_y) < 10:
+            dx, dy = -dx, -dy
+        elif delta_x > delta_y:
+            dy = -dy
+        elif delta_y > delta_x:
+            dx = -dx
+        return dx, dy
 
     def setup(self):
         pass
 
     def process_event(self, event):
+        key = pygame.key.get_pressed()
+        if key[pygame.K_LEFT] and self._board.left > 0:
+            self._board.left -= self._board_speed
+        if key[pygame.K_RIGHT] and self._board.right < WIDTH:
+            self._board.right += self._board_speed
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.get_app().set_state(MenuState('background'))
 
     def loop(self, dt):
-        self.get_app().get_screen().fill((255, 128, 0))
+        self.get_app().get_screen().fill((35, 52, 110))
+        screen = self.get_app().get_screen()
+        if self._is_mode:
+            for i in range(len(self._block_list)):
+                if self._is_draw_list[i]:
+                    pygame.draw.rect(screen, (66, 170, 255), self._block_list[i])
+        else:
+            for i in range(len(self._block_list)):
+                pygame.draw.rect(screen, (66, 170, 255), self._block_list[i])
+        pygame.draw.rect(screen, pygame.Color((255, 255, 255)), self._board)
+        pygame.draw.circle(screen, pygame.Color((255, 255, 255)), self._ball.center, self._ball_radius)
+        self._ball.x += self._ball_speed * self._dx
+        self._ball.y += self._ball_speed * self._dy
+        if self._ball.centerx < self._ball_radius or self._ball.centerx > WIDTH - self._ball_radius:
+            self._dx = -self._dx
+        if self._ball.centery < self._ball_radius:
+            self._dy = -self._dy
+        if self._ball.colliderect(self._board) and self._dy > 0:
+            self._dx, self._dy = self.detect_collision(self._dx, self._dy, self._ball, self._board)
+        hit_index = self._ball.collidelist(self._block_list)
+        if hit_index != -1:
+            hit_rect = self._block_list.pop(hit_index)
+            self._dx, self._dy = self.detect_collision(self._dx, self._dy, self._ball, hit_rect)
+            hit_rect.inflate_ip(self._ball.width * 3, self._ball.height * 3)
+            pygame.draw.rect(screen, (255, 0, 5), hit_rect)
+        if self._ball.bottom > HEIGHT:
+            pass
+        elif not len(self._block_list):
+            pass
 
     def destroy(self):
         pass
@@ -214,36 +281,41 @@ class Button:
 
 
 class InputBox:
-    def __init__(self, x, y, length, height, color_act, color_pass):
+    def __init__(self, x, y, length, height, color_act, color_pass, text='', is_click=True):
         self._font = pygame.font.SysFont("Calibri", 30)
         self._color_act = pygame.Color(color_act)
         self._color_pass = pygame.Color(color_pass)
         self._rect = pygame.Rect(x, y, length, height)
         self._color_now = self._color_pass
-        self._text = ''
-        self._txt_surface = self._font.render('', True, self._color_now)
+        self._text = text
+        self._txt_surface = self._font.render(text, True, self._color_now)
         self._is_active = False
+        self._is_click = is_click
+        self._worki = AppState()
 
     def press(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if self._rect.collidepoint(event.pos):
-                self._is_active = not self._is_active
-            else:
-                self._is_active = False
-            self._color_now = self._color_act if self._is_active else self._color_act
-        if event.type == pygame.KEYDOWN:
-            if self._is_active:
-                if event.key == pygame.K_RETURN:
-                    self.ret_total()
-                    CUR.execute("""INSERT INTO players(name, score) VALUES(?, ?);""", self._total)
-                    CON.commit()
-                    self._text = ''
-                elif event.key == pygame.K_BACKSPACE:
-                    self._text = self._text[:-1]
+        if self._is_click:
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if self._rect.collidepoint(event.pos):
+                    self._is_active = not self._is_active
                 else:
-                    self._text += event.unicode
-                    self.update()
-                self._txt_surface = self._font.render(self._text, True, self._color_now)
+                    self._is_active = False
+                self._color_now = self._color_act if self._is_active else self._color_act
+            if event.type == pygame.KEYDOWN:
+                if self._is_active:
+                    if event.key == pygame.K_RETURN:
+                        self.ret_total()
+                        CUR.execute("""INSERT INTO players(name, score) VALUES(?, ?);""", self._total)
+                        CON.commit()
+                        self._text = ''
+                    elif event.key == pygame.K_BACKSPACE:
+                        self._text = self._text[:-1]
+                    else:
+                        self._text += event.unicode
+                        self.update()
+                    self._txt_surface = self._font.render(self._text, True, self._color_now)
+        else:
+            self._txt_surface = self._font.render(self._text, True, self._color_now)
 
     def ret_total(self):
         if self._text:
