@@ -124,7 +124,9 @@ class RecState(AppState):
                 self._total = self._name.ret_total()
                 CUR.execute("""INSERT INTO players(name, score) VALUES(?, ?);""", self._total)
                 CON.commit()
-                self.get_app().set_state(GameState())
+                self.get_app().set_state(GameState(randrange(0, 2)))
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.get_app().set_state(MenuState('background'))
 
     def loop(self, dt):
         screen = self.get_app().get_screen()
@@ -149,7 +151,7 @@ class RecState(AppState):
             kol = 1
             for i in self._text:
                 kol += 1
-                self._txt_surface = self._font.render(i, True, (0, 0, 0))
+                self._txt_surface = self._font.render(i, True, (35, 52, 110))
                 screen.blit(self._txt_surface, (self._rect.x + 150, self._rect.y + 40 * kol))
         CON.commit()
         self._name.draw(screen)
@@ -164,7 +166,7 @@ class GameState(AppState):
         super().__init__()
         self._is_mode = is_find
         self._board_speed = 60
-        self._board = pygame.Rect(450, 650, 300, 20)
+        self._board = pygame.Rect(450, 650, 300, 30)
         self._ball_radius = 20
         self._ball_speed = 3
         self._ball_rect = int(self._ball_radius * 2 ** 0.5)
@@ -173,6 +175,9 @@ class GameState(AppState):
         self._dx, self._dy = 1, -1
         self._block_list = [pygame.Rect(10 + 120 * i, 10 + 70 * j, 100, 50) for i in range(10) for j in range(4)]
         self._is_draw_list = [randrange(0, 2) for _ in self._block_list]
+        self._num = 0
+        self._text = 'Score: ' + str(self._num)
+        self._out = Button()
 
     def detect_collision(self, dx, dy, ball, rect):
         if dx > 0:
@@ -202,10 +207,17 @@ class GameState(AppState):
             self._board.right += self._board_speed
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.get_app().set_state(MenuState('background'))
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if self._out.pressed(pygame.mouse.get_pos()):
+                self.get_app().set_state(MenuState('background'))
 
     def loop(self, dt):
         self.get_app().get_screen().fill((35, 52, 110))
         screen = self.get_app().get_screen()
+        self._out.do(screen, (66, 170, 255), 700, 720, 200, 50, 0, "EXIT", (35, 52, 110))
+        self._score = InputBox(200, 720, 300, 50, (66, 170, 255), (66, 170, 255),
+                               text=self._text, is_click=False)
+        self._score.draw(screen)
         if self._is_mode:
             for i in range(len(self._block_list)):
                 if self._is_draw_list[i]:
@@ -226,13 +238,29 @@ class GameState(AppState):
         hit_index = self._ball.collidelist(self._block_list)
         if hit_index != -1:
             hit_rect = self._block_list.pop(hit_index)
+            self._num += 20
+            worki = self._text.split()
+            worki[1] = str(self._num)
+            self._text = ' '.join(worki)
             self._dx, self._dy = self.detect_collision(self._dx, self._dy, self._ball, hit_rect)
-            hit_rect.inflate_ip(self._ball.width * 3, self._ball.height * 3)
+            hit_rect.inflate_ip(self._ball.width * 2, self._ball.height * 2)
             pygame.draw.rect(screen, (255, 0, 5), hit_rect)
         if self._ball.bottom > HEIGHT:
-            pass
+            CUR.execute(f"""UPDATE players SET score = ?
+                            WHERE number_of_play=(SELECT MAX(number_of_play) 
+                            FROM players);""", (self._num,))
+            self._text = _return_znach(key=('name',))[0] + ", you've lost"
+            self._score = InputBox(200, 720, 300, 50, (66, 170, 255), (66, 170, 255),
+                                   text=self._text, is_click=False)
+            self._score.draw(screen)
         elif not len(self._block_list):
-            pass
+            CUR.execute(f"""UPDATE players SET score = ?
+                            WHERE number_of_play=(SELECT MAX(number_of_play) 
+                            FROM players);""", (self._num,))
+            self._text = _return_znach(key=('name',))[0] + ", you won!"
+            self._score = InputBox(200, 720, 300, 50, (66, 170, 255), (66, 170, 255),
+                                   text=self._text, is_click=False)
+            self._score.draw(screen)
 
     def destroy(self):
         pass
