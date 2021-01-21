@@ -376,10 +376,10 @@ class InputBox:
 
     def ret_total(self):
         if self._text:
-            self._total = (self._text, 0)
+            self._totl = (self._text, 0)
         else:
-            self._total = ('StarKiller', 0)
-        return self._total
+            self._totl = ('StarKiller', 0)
+        return self._totl
 
     def update(self):
         width = max(200, self._txt_surface.get_width() + 30)
