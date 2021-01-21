@@ -64,6 +64,35 @@ class AppState:
         pass
 
 
+class StartState(AppState):
+    def __init__(self, start_image):
+        self._bg_img, self._img = imgs[start_image], imgs[start_image]
+        self._name_game = InputBox(300, 150, 600, 75, (66, 170, 255), (66, 170, 255),
+                                   text='Arkanoid 2021', is_click=False)
+        self._rotate = 0
+
+    def setup(self):
+        self._bg_img, self._img = pygame.transform.scale(self._bg_img, (300, 300)), \
+                                  pygame.transform.scale(self._bg_img, (300, 300))
+        pygame.display.set_caption('Arkanoid')
+
+    def process_event(self, event):
+        pass
+
+    def loop(self, dt):
+        screen = self.get_app().get_screen()
+        self._rotate -= 1
+        self.get_app().get_screen().fill((35, 52, 110))
+        self._name_game.draw(screen)
+        screen.blit(self._bg_img, (WIDTH // 2 - 200, HEIGHT // 2 - 150))
+        self._bg_img = pygame.transform.rotate(self._img, self._rotate)
+        if self._rotate == -1000:
+            self.get_app().set_state(MenuState('background'))
+
+    def destroy(self):
+        pass
+
+
 class MenuState(AppState):
     def __init__(self, background_image):
         super().__init__()
@@ -168,7 +197,7 @@ class GameState(AppState):
         self._board_speed = 60
         self._board = pygame.Rect(450, 650, 300, 30)
         self._ball_radius = 20
-        self._ball_speed = 3
+        self._ball_speed = 6
         self._ball_rect = int(self._ball_radius * 2 ** 0.5)
         self._ball = pygame.Rect(randrange(self._ball_rect, WIDTH - self._ball_rect),
                                  400, self._ball_rect, self._ball_rect)
@@ -206,9 +235,15 @@ class GameState(AppState):
         if key[pygame.K_RIGHT] and self._board.right < WIDTH:
             self._board.right += self._board_speed
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            CUR.execute(f"""UPDATE players SET score = ?
+                            WHERE number_of_play=(SELECT MAX(number_of_play) 
+                            FROM players);""", (self._num,))
             self.get_app().set_state(MenuState('background'))
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self._out.pressed(pygame.mouse.get_pos()):
+                CUR.execute(f"""UPDATE players SET score = ?
+                                WHERE number_of_play=(SELECT MAX(number_of_play) 
+                                FROM players);""", (self._num,))
                 self.get_app().set_state(MenuState('background'))
 
     def loop(self, dt):
@@ -250,17 +285,11 @@ class GameState(AppState):
                             WHERE number_of_play=(SELECT MAX(number_of_play) 
                             FROM players);""", (self._num,))
             self._text = _return_znach(key=('name',))[0] + ", you've lost"
-            self._score = InputBox(200, 720, 300, 50, (66, 170, 255), (66, 170, 255),
-                                   text=self._text, is_click=False)
-            self._score.draw(screen)
         elif not len(self._block_list):
             CUR.execute(f"""UPDATE players SET score = ?
                             WHERE number_of_play=(SELECT MAX(number_of_play) 
                             FROM players);""", (self._num,))
             self._text = _return_znach(key=('name',))[0] + ", you won!"
-            self._score = InputBox(200, 720, 300, 50, (66, 170, 255), (66, 170, 255),
-                                   text=self._text, is_click=False)
-            self._score.draw(screen)
 
     def destroy(self):
         pass
@@ -374,10 +403,9 @@ def load_image(image_path, colorkey=None):
 
 if __name__ == '__main__':
     app = App()
-
     imgs = {'background': load_image('background.png'),
-            'recbackground': load_image('recback.png')}
-
-    menu_state = MenuState('background')
+            'recbackground': load_image('recback.png'),
+            'startimg': load_image('start.png')}
+    menu_state = StartState('startimg')
     app.set_state(menu_state)
     app.run()
