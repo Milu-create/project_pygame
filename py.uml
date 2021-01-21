@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>Python</ID>
+  <OriginalElement>#/Users/vadimkocetok/PycharmProjects/pythonProject3/main.py</OriginalElement>
+  <nodes>
+    <node x="1005.0" y="1462.0">main.StartState</node>
+    <node x="1454.5" y="905.0">main.App</node>
+    <node x="642.0" y="1306.0">main.GameState</node>
+    <node x="321.0" y="1410.0">main.RecState</node>
+    <node x="518.5" y="905.0">main.AppState</node>
+    <node x="1676.5" y="944.0">main.Button</node>
+    <node x="1240.5" y="0.0">typing.Hashable</node>
+    <node x="0.0" y="1423.0">main.MenuState</node>
+    <node x="1162.0" y="114.0">object</node>
+    <node x="786.5" y="801.0">main.InputBox</node>
+  </nodes>
+  <notes />
+  <edges>
+    <edge source="main.StartState" target="main.AppState">
+      <point x="0.0" y="-136.5" />
+      <point x="1129.0" y="1276.0" />
+      <point x="735.5" y="1276.0" />
+      <point x="93.0" y="123.5" />
+    </edge>
+    <edge source="main.AppState" target="object">
+      <point x="0.0" y="-123.5" />
+      <point x="642.5" y="771.0" />
+      <point x="1204.75" y="771.0" />
+      <point x="-128.25" y="318.5" />
+    </edge>
+    <edge source="main.App" target="object">
+      <point x="0.0" y="-123.5" />
+      <point x="1555.5" y="781.0" />
+      <point x="1375.75" y="781.0" />
+      <point x="42.75" y="318.5" />
+    </edge>
+    <edge source="object" target="typing.Hashable">
+      <point x="0.0" y="-318.5" />
+      <point x="0.0" y="32.0" />
+    </edge>
+    <edge source="main.GameState" target="main.AppState">
+      <point x="0.0" y="-292.5" />
+      <point x="813.5" y="1286.0" />
+      <point x="673.5" y="1286.0" />
+      <point x="31.0" y="123.5" />
+    </edge>
+    <edge source="main.InputBox" target="object">
+      <point x="0.0" y="-227.5" />
+      <point x="1110.5" y="781.0" />
+      <point x="1290.25" y="781.0" />
+      <point x="-42.75" y="318.5" />
+    </edge>
+    <edge source="main.MenuState" target="main.AppState">
+      <point x="0.0" y="-175.5" />
+      <point x="150.5" y="1276.0" />
+      <point x="549.5" y="1276.0" />
+      <point x="-93.0" y="123.5" />
+    </edge>
+    <edge source="main.RecState" target="main.AppState">
+      <point x="0.0" y="-188.5" />
+      <point x="471.5" y="1286.0" />
+      <point x="611.5" y="1286.0" />
+      <point x="-31.0" y="123.5" />
+    </edge>
+    <edge source="main.Button" target="object">
+      <point x="0.0" y="-84.5" />
+      <point x="1956.5" y="771.0" />
+      <point x="1461.25" y="771.0" />
+      <point x="128.25" y="318.5" />
+    </edge>
+  </edges>
+  <settings layout="Hierarchic Group" zoom="0.3810047095761382" x="1121.96992171405" y="990.4861969509682" />
+  <SelectedNodes>
+    <node>main.App</node>
+  </SelectedNodes>
+  <Categories>
+    <Category>Methods</Category>
+    <Category>Inner Classes</Category>
+    <Category>Fields</Category>
+  </Categories>
+</Diagram>
+
