@@ -197,7 +197,7 @@ class GameState(AppState):
         self._board_speed = 60
         self._board = pygame.Rect(450, 650, 300, 30)
         self._ball_radius = 20
-        self._ball_speed = 6
+        self._ball_speed = 4
         self._ball_rect = int(self._ball_radius * 2 ** 0.5)
         self._ball = pygame.Rect(randrange(self._ball_rect, WIDTH - self._ball_rect),
                                  400, self._ball_rect, self._ball_rect)
