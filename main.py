@@ -223,7 +223,7 @@ class GameState(AppState):
         self._ball = pygame.Rect(randrange(self._ball_rect, WIDTH - self._ball_rect),
                                  400, self._ball_rect, self._ball_rect)
         self._dx, self._dy = 1, -1
-        self._block_list = [pygame.Rect(10 + 120 * i, 10 + 70 * j, 100, 50) for i in range(5) for j in range(1)]
+        self._block_list = [pygame.Rect(10 + 120 * i, 10 + 70 * j, 100, 50) for i in range(10) for j in range(4)]
         self._is_draw_list = [randrange(0, 2) for _ in self._block_list]
         self._num = 0
         self._text = 'Score: ' + str(self._num)
@@ -444,6 +444,7 @@ if __name__ == '__main__':
     imgs = {'background': load_image('background.png'),
             'recbackground': load_image('recback.png'),
             'startimg': load_image('start.png')}
-    menu_state = MenuState('background') #StartState('startimg')
+    menu_state = StartState('startimg')
     app.set_state(menu_state)
     app.run()
+
