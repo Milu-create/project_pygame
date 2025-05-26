@@ -68,7 +68,7 @@ class StartState(AppState):
     def __init__(self, start_image):
         self._bg_img, self._img = imgs[start_image], imgs[start_image]
         self._name_game = InputBox(300, 150, 600, 75, (66, 170, 255), (66, 170, 255),
-                                   text='Arkanoid 2021', is_click=False)
+                                   text='Arkanoid', is_click=False)
         self._rotate = 0
 
     def setup(self):
@@ -100,6 +100,10 @@ class MenuState(AppState):
         self._record_but = Button()
         self._find = Button()
         self._open = Button()
+        self._color_blue = Button()
+        self._color_pink = Button()
+        self._color = (66, 170, 255)
+        self._pause = False
         self._name = InputBox(500, 150, 200, 50, (66, 170, 255), (35, 52, 110))
         self._bg_img = imgs[background_image]
 
@@ -108,19 +112,33 @@ class MenuState(AppState):
         self._bg_img = pygame.transform.scale(self._bg_img, (WIDTH, HEIGHT))
 
     def process_event(self, event):
+        pygame.mixer.music.load("sound.mp3")
+        pygame.mixer.music.play(loops=-1, fade_ms=10)
+        pygame.mixer.music.set_volume(0.1)
         self._name.press(event)
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self._but_new_game.pressed(pygame.mouse.get_pos()):
                 self._total = self._name.ret_total()
                 CUR.execute("""INSERT INTO players(name, score) VALUES(?, ?);""", self._total)
                 CON.commit()
-                self.get_app().set_state(GameState(randrange(0, 2)))
+                self.get_app().set_state(GameState(randrange(0, 2), self._color))
             elif self._record_but.pressed(pygame.mouse.get_pos()):
                 self.get_app().set_state(RecState('recbackground'))
             elif self._open.pressed(pygame.mouse.get_pos()):
-                self.get_app().set_state(GameState(0))
+                self.get_app().set_state(GameState(0, self._color))
             elif self._find.pressed(pygame.mouse.get_pos()):
-                self.get_app().set_state(GameState(1))
+                self.get_app().set_state(GameState(1, self._color))
+            elif self._color_blue.pressed(pygame.mouse.get_pos()):
+                self._color  = (66, 170, 255)
+            elif self._color_pink.pressed(pygame.mouse.get_pos()):
+                self._color = (255, 0, 255)
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
+            self._pause = not self._pause
+            if self._pause:
+                pygame.mixer.music.pause()
+            else:
+                pygame.mixer.music.unpause()
+
 
     def loop(self, dt):
         screen = self.get_app().get_screen()
@@ -131,6 +149,8 @@ class MenuState(AppState):
         self._find.do(screen, (66, 170, 255), 700, 475, 400, 75, 0, "HIDE AND SEEK MODE", (35, 52, 110))
         self._but_new_game.do(screen, (66, 170, 255), 500, 350, 200, 50, 0, "PLAY", (35, 52, 110))
         self._record_but.do(screen, (66, 170, 255), 500, 650, 200, 50, 0, "RECORDS", (35, 52, 110))
+        self._color_pink.do(screen, (255, 0, 255), 750, 720, 200, 50, 0, " ", (35, 52, 110))
+        self._color_blue.do(screen, (66, 170, 255), 950, 720, 200, 50, 0, " ", (35, 52, 110))
 
     def destroy(self):
         pass
@@ -153,7 +173,7 @@ class RecState(AppState):
                 self._total = self._name.ret_total()
                 CUR.execute("""INSERT INTO players(name, score) VALUES(?, ?);""", self._total)
                 CON.commit()
-                self.get_app().set_state(GameState(randrange(0, 2)))
+                self.get_app().set_state(GameState(randrange(0, 2), (66, 170, 255)))
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.get_app().set_state(MenuState('background'))
 
@@ -191,9 +211,10 @@ class RecState(AppState):
 
 
 class GameState(AppState):
-    def __init__(self, is_find):
+    def __init__(self, is_find, color):
         super().__init__()
         self._is_mode = is_find
+        self._color_rect = color
         self._board_speed = 60
         self._board = pygame.Rect(450, 650, 300, 30)
         self._ball_radius = 20
@@ -202,11 +223,14 @@ class GameState(AppState):
         self._ball = pygame.Rect(randrange(self._ball_rect, WIDTH - self._ball_rect),
                                  400, self._ball_rect, self._ball_rect)
         self._dx, self._dy = 1, -1
-        self._block_list = [pygame.Rect(10 + 120 * i, 10 + 70 * j, 100, 50) for i in range(10) for j in range(4)]
+        self._block_list = [pygame.Rect(10 + 120 * i, 10 + 70 * j, 100, 50) for i in range(5) for j in range(1)]
         self._is_draw_list = [randrange(0, 2) for _ in self._block_list]
         self._num = 0
         self._text = 'Score: ' + str(self._num)
         self._out = Button()
+        self._stop = Button()
+        self._play = Button()
+        self._resum = Button()
 
     def detect_collision(self, dx, dy, ball, rect):
         if dx > 0:
@@ -245,21 +269,31 @@ class GameState(AppState):
                                 WHERE number_of_play=(SELECT MAX(number_of_play) 
                                 FROM players);""", (self._num,))
                 self.get_app().set_state(MenuState('background'))
+            elif self._stop.pressed(pygame.mouse.get_pos()):
+                self._board_speed = 0
+                self._ball_speed = 0
+            elif self._play.pressed(pygame.mouse.get_pos()):
+                self._board_speed = 60
+                self._ball_speed = 4
+            elif self._resum.pressed(pygame.mouse.get_pos()):
+                self.get_app().set_state(GameState(randrange(0, 2), self._color_rect)) 
 
     def loop(self, dt):
         self.get_app().get_screen().fill((35, 52, 110))
         screen = self.get_app().get_screen()
-        self._out.do(screen, (66, 170, 255), 700, 720, 200, 50, 0, "EXIT", (35, 52, 110))
-        self._score = InputBox(200, 720, 300, 50, (66, 170, 255), (66, 170, 255),
+        self._out.do(screen, (66, 170, 255), 500, 720, 200, 50, 0, "EXIT", (35, 52, 110))
+        self._stop.do(screen, (66, 170, 255), 800, 720, 200, 50, 0, "STOP", (35, 52, 110))
+        self._play.do(screen, (66, 170, 255), 1000, 720, 200, 50, 0, "PLAY", (35, 52, 110))
+        self._score = InputBox(100, 720, 300, 50, (66, 170, 255), (66, 170, 255),
                                text=self._text, is_click=False)
         self._score.draw(screen)
         if self._is_mode:
             for i in range(len(self._block_list)):
                 if self._is_draw_list[i]:
-                    pygame.draw.rect(screen, (66, 170, 255), self._block_list[i])
+                    pygame.draw.rect(screen, self._color_rect, self._block_list[i])
         else:
             for i in range(len(self._block_list)):
-                pygame.draw.rect(screen, (66, 170, 255), self._block_list[i])
+                pygame.draw.rect(screen, self._color_rect, self._block_list[i])
         pygame.draw.rect(screen, pygame.Color((255, 255, 255)), self._board)
         pygame.draw.circle(screen, pygame.Color((255, 255, 255)), self._ball.center, self._ball_radius)
         self._ball.x += self._ball_speed * self._dx
@@ -290,6 +324,10 @@ class GameState(AppState):
                             WHERE number_of_play=(SELECT MAX(number_of_play) 
                             FROM players);""", (self._num,))
             self._text = _return_znach(key=('name',))[0] + ", you won!"
+            self._resum.do(screen, (66, 170, 255), 500, 425, 200, 50, 0, "RESUM", (35, 52, 110))
+            self._board_speed = 0
+            self._ball_speed = 0
+
 
     def destroy(self):
         pass
@@ -406,6 +444,6 @@ if __name__ == '__main__':
     imgs = {'background': load_image('background.png'),
             'recbackground': load_image('recback.png'),
             'startimg': load_image('start.png')}
-    menu_state = StartState('startimg')
+    menu_state = MenuState('background') #StartState('startimg')
     app.set_state(menu_state)
     app.run()
