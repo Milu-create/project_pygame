@@ -75,6 +75,9 @@ class StartState(AppState):
         self._bg_img, self._img = pygame.transform.scale(self._bg_img, (300, 300)), \
                                   pygame.transform.scale(self._bg_img, (300, 300))
         pygame.display.set_caption('Arkanoid')
+        pygame.mixer.music.load("sound.mp3")
+        pygame.mixer.music.play(loops=-1, fade_ms=10)
+        pygame.mixer.music.set_volume(0.1)
 
     def process_event(self, event):
         pass
@@ -112,9 +115,6 @@ class MenuState(AppState):
         self._bg_img = pygame.transform.scale(self._bg_img, (WIDTH, HEIGHT))
 
     def process_event(self, event):
-        pygame.mixer.music.load("sound.mp3")
-        pygame.mixer.music.play(loops=-1, fade_ms=10)
-        pygame.mixer.music.set_volume(0.1)
         self._name.press(event)
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self._but_new_game.pressed(pygame.mouse.get_pos()):
@@ -185,7 +185,7 @@ class RecState(AppState):
         result.sort(reverse=True)
         with open('text_for_top.txt', mode='w') as out_file:
             if len(result) > 10:
-                for i in range(1, 11):
+                for i in range(0, 11):
                     total = CUR.execute("SELECT name FROM players WHERE score=?;", result[i]).fetchone()
                     print('', i + 1, total[0], result[i][0], file=out_file, sep='      ', end=';')
             else:
@@ -447,4 +447,3 @@ if __name__ == '__main__':
     menu_state = StartState('startimg')
     app.set_state(menu_state)
     app.run()
-
